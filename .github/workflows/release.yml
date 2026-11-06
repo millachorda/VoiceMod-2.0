@@ -36,8 +36,12 @@ jobs:
           pip install -r requirements.txt
           # Bootloader de PyInstaller compilado aquí mismo: el precompilado es el mismo que usa
           # mucho malware y los antivirus lo marcan por error.
-          $env:PYINSTALLER_COMPILE_BOOTLOADER = "1"
-          pip install --no-binary pyinstaller --no-cache-dir pyinstaller
+          git clone --depth 1 --branch v6.22.3 https://github.com/pyinstaller/pyinstaller.git "$env:RUNNER_TEMP\pyi"
+          Push-Location "$env:RUNNER_TEMP\pyi\bootloader"
+          python ./waf all --target-arch=64bit
+          if ($LASTEXITCODE -ne 0) { throw "No se pudo compilar el bootloader" }
+          Pop-Location
+          pip install "$env:RUNNER_TEMP\pyi"
           python build_tools/make_version.py
 
       - name: Empaquetar la app
