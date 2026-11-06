@@ -18,10 +18,7 @@ from engine import AudioEngine, DEFAULT_PARAMS, load_wav, SR
 from presets import PRESETS, META, CATEGORIES
 from version import VERSION, REPO, SETUP_ASSET
 
-try:
-    import keyboard  # atajos globales
-except Exception:
-    keyboard = None
+from hotkeys import HotkeyManager, parse as parse_combo
 
 APP_NAME = "VoiceMod 2.0"
 FROZEN = getattr(sys, "frozen", False)
@@ -169,7 +166,7 @@ class Api:
         return dict(voices=self._voices(), categories=CATEGORIES + ["Mis voces"], sounds=self._sounds(),
                     params=self.params, defaults=DEFAULT_PARAMS, current=self.current, apis=apis, api=api,
                     devices=self.devices(api), cfg=self.cfg, favs=self.cfg.get("favoritas", []),
-                    toggles=self._toggles(), sfx_volume=self._eng.sound_volume, hotkeys=keyboard is not None, binds=self._binds())
+                    toggles=self._toggles(), sfx_volume=self._eng.sound_volume, hotkeys=True, binds=self._binds())
 
     def devices(self, api):
         apis = sd.query_hostapis()
@@ -461,43 +458,33 @@ class Api:
             self.notice = f"{labels[arg]}: {'sí' if not cur else 'no'}"
 
     def _hotkeys(self):
-        if keyboard is None:
-            return
-        try:
-            keyboard.unhook_all_hotkeys()
-        except Exception:
-            pass
-        for target, combo in self._binds().items():
-            try:
-                keyboard.add_hotkey(combo, self._run_bind, args=(target,))
-            except Exception:
-                pass
+        """Registra en Windows todos los atajos guardados. Devuelve los que no se pudieron registrar."""
+        if not hasattr(self, "_hk"):
+            self._hk = HotkeyManager()
+        binds = {combo: (lambda t=target: self._run_bind(t)) for target, combo in self._binds().items()}
+        return self._hk.set_all(binds)
 
     def hotkeys(self):
-        return dict(available=keyboard is not None, binds=self._binds(),
+        return dict(available=True, binds=self._binds(),
                     actions=[dict(id=k, label=v) for k, v in self.ACTIONS.items()])
 
-    def capture_hotkey(self):
-        """Espera a que el usuario pulse una combinación. Esc cancela."""
-        if keyboard is None:
-            return None
-        try:
-            keyboard.unhook_all_hotkeys()
-        except Exception:
-            pass
-        try:
-            combo = keyboard.read_hotkey(suppress=False)
-        finally:
-            self._hotkeys()
-        return None if combo in ("esc", "escape") else combo
-
     def set_hotkey(self, target, combo):
+        combo = combo.lower()
+        try:
+            parse_combo(combo)
+        except ValueError as e:
+            return dict(ok=False, error=str(e), binds=self._binds())
         b = self._binds()
+        old = dict(b)
         for k in [k for k, v in b.items() if v == combo]:
             b.pop(k)  # una combinación solo puede tener una función
         b[target] = combo
-        self._save_cfg(); self._hotkeys()
-        return b
+        failed = self._hotkeys()
+        if combo in failed:  # la tiene cogida otra aplicación o Windows
+            b.clear(); b.update(old); self._hotkeys()
+            return dict(ok=False, error=f"{combo.upper()} ya la usa otra aplicación o Windows. Prueba otra.", binds=b)
+        self._save_cfg()
+        return dict(ok=True, binds=b)
 
     def clear_hotkey(self, target):
         self._binds().pop(target, None)
@@ -510,11 +497,8 @@ class Api:
     def shutdown(self):
         self._save_cfg()
         self._eng.stop()
-        if keyboard:
-            try:
-                keyboard.unhook_all()
-            except Exception:
-                pass
+        if hasattr(self, "_hk"):
+            self._hk.stop()
 
 
 def style_window(window):

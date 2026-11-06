@@ -154,7 +154,7 @@ function hkRow(target) {
 }
 function renderHotkeys() {
   if (!S.hkAvailable) {
-    $("#hkActions").innerHTML = `<div class="alert">Falta la librería «keyboard»: ejecuta <b>pip install keyboard</b> para usar atajos.</div>`;
+    $("#hkActions").innerHTML = `<div class="alert">Los atajos no están disponibles.</div>`;
     return;
   }
   $("#hkActions").innerHTML = S.actions.map((a) => hkRow("action:" + a.id)).join("");
@@ -164,14 +164,47 @@ function renderHotkeys() {
 function refreshBinds(b) {
   S.binds = b; renderHotkeys(); renderVoices(); renderSounds();
 }
+// Nombres de tecla a partir de KeyboardEvent.code (independiente del idioma del teclado)
+function keyName(code) {
+  if (/^Key[A-Z]$/.test(code)) return code.slice(3).toLowerCase();
+  if (/^Digit\d$/.test(code)) return code.slice(5);
+  if (/^F\d{1,2}$/.test(code)) return code.toLowerCase();
+  if (/^Numpad\d$/.test(code)) return "num " + code.slice(6);
+  const map = { NumpadMultiply: "num *", NumpadAdd: "num +", NumpadSubtract: "num -", NumpadDecimal: "num .", NumpadDivide: "num /",
+    Space: "space", Enter: "enter", Tab: "tab", Backspace: "backspace", Insert: "insert", Delete: "delete", Home: "home", End: "end",
+    PageUp: "page up", PageDown: "page down", ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right",
+    Pause: "pause", ScrollLock: "scroll lock", PrintScreen: "print screen" };
+  return map[code] || null;
+}
+function captureCombo() {
+  return new Promise((resolve) => {
+    const onKey = (e) => {
+      e.preventDefault(); e.stopPropagation();
+      if (e.code === "Escape") return finish(null);
+      if (["Control", "Shift", "Alt", "Meta", "AltGraph"].includes(e.key)) return; // espera a la tecla principal
+      const k = keyName(e.code);
+      if (!k) { $("#hkFor").textContent = "Esa tecla no se puede usar. Prueba otra."; return; }
+      const mods = [e.ctrlKey && "ctrl", e.altKey && "alt", e.shiftKey && "shift", e.metaKey && "win"].filter(Boolean);
+      // letras, números y teclas de escribir necesitan un modificador para no bloquear la escritura
+      if (!mods.length && /^([a-z0-9]|space|enter|tab|backspace)$/.test(k)) {
+        $("#hkFor").textContent = "Esa tecla sola bloquearía la escritura: añade Ctrl, Alt o Shift.";
+        return;
+      }
+      finish([...mods, k].join("+"));
+    };
+    const finish = (v) => { document.removeEventListener("keydown", onKey, true); resolve(v); };
+    document.addEventListener("keydown", onKey, true);
+  });
+}
 async function assignHotkey(target) {
-  if (!S.hkAvailable) return toast("Instala la librería keyboard para usar atajos", true);
   $("#hkFor").textContent = "Para: " + hkLabel(target);
   $("#hkModal").classList.add("show");
   let combo = null;
-  try { combo = await api.capture_hotkey(); } finally { $("#hkModal").classList.remove("show"); }
+  try { combo = await captureCombo(); } finally { $("#hkModal").classList.remove("show"); }
   if (!combo) return toast("Cancelado");
-  refreshBinds(await api.set_hotkey(target, combo));
+  const r = await api.set_hotkey(target, combo);
+  refreshBinds(r.binds);
+  if (!r.ok) return toast(r.error, true);
   toast("Atajo " + fmtCombo(combo) + " → " + hkLabel(target));
 }
 

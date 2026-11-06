@@ -7,3 +7,4 @@ ui/img/personal/
 ui/img/sonidos/
 build/
 dist/
+build_tools/file_version.txt
