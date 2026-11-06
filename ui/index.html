@@ -131,14 +131,10 @@
         <div class="panel">
           <div class="banner" style="background-image:url('img/ajustes/atajos.jpg')"></div>
           <h4>Atajos de teclado globales</h4>
-          <p>Funcionan aunque estés dentro de un juego o en Discord.</p>
-          <div class="keys">
-            <div><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>R</kbd></div><div>Voz aleatoria</div>
-            <div><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>V</kbd></div><div>Activar / desactivar efecto</div>
-            <div><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>M</kbd></div><div>Silenciar micrófono</div>
-            <div><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>1-9</kbd></div><div>Lanzar sonido 1-9</div>
-            <div><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>0</kbd></div><div>Parar sonidos</div>
-          </div>
+          <p>No hay ninguno puesto: asigna tú los que quieras. Funcionan aunque estés dentro de un juego o en Discord. También puedes asignar una tecla a cada voz y a cada sonido con el botón ⌨ de su tarjeta.</p>
+          <div class="hk-list" id="hkActions"></div>
+          <div class="hk-sub" id="hkOthersTitle">Voces y sonidos</div>
+          <div class="hk-list" id="hkOthers"></div>
         </div>
         <div class="panel">
           <div class="banner" style="background-image:url('img/ajustes/chat.jpg')"></div>
@@ -176,6 +172,14 @@
 </div>
 
 <div class="toasts" id="toasts"></div>
+<div class="modal-bg" id="hkModal">
+  <div class="modal" style="text-align:center">
+    <div class="hk-anim">⌨️</div>
+    <h4>Pulsa la combinación de teclas</h4>
+    <p id="hkFor">Para: —</p>
+    <p style="margin-top:-8px">Por ejemplo <kbd>Ctrl</kbd><kbd>F1</kbd> o <kbd>Shift</kbd><kbd>Num 1</kbd>. <b>Esc</b> para cancelar.</p>
+  </div>
+</div>
 <div class="modal-bg" id="modal">
   <div class="modal">
     <h4>Guardar voz personalizada</h4>

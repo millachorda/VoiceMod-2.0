@@ -148,7 +148,7 @@ class Api:
         return dict(voices=self._voices(), categories=CATEGORIES + ["Mis voces"], sounds=self._sounds(),
                     params=self.params, defaults=DEFAULT_PARAMS, current=self.current, apis=apis, api=api,
                     devices=self.devices(api), cfg=self.cfg, favs=self.cfg.get("favoritas", []),
-                    toggles=self._toggles(), sfx_volume=self._eng.sound_volume, hotkeys=keyboard is not None)
+                    toggles=self._toggles(), sfx_volume=self._eng.sound_volume, hotkeys=keyboard is not None, binds=self._binds())
 
     def devices(self, api):
         apis = sd.query_hostapis()
@@ -342,28 +342,89 @@ class Api:
                     toggles=self._toggles(), test=self.test_state, playing=len(self._eng.sounds), notice=n)
 
     # ---------- atajos ----------
+    # Sin atajos por defecto: el usuario asigna los suyos. Se guardan en config.json -> "atajos".
+    # Claves: "action:<id>", "voice:<nombre>", "sound:<archivo>"
+    ACTIONS = {
+        "power": "Iniciar / detener el motor",
+        "enabled": "Activar / desactivar el efecto",
+        "muted": "Silenciar el micrófono",
+        "monitor": "Escucharme",
+        "random": "Voz aleatoria",
+        "stop_sounds": "Parar todos los sonidos",
+    }
+
+    def _binds(self):
+        return self.cfg.setdefault("atajos", {})
+
+    def _run_bind(self, target):
+        kind, _, arg = target.partition(":")
+        if kind == "voice":
+            if self._voice_params(arg) is not None:
+                self._select(arg); self.notice = f"Voz: {arg}"
+        elif kind == "sound":
+            r = self.play(arg)
+            if not r["ok"]:
+                self.notice = r["error"]
+        elif arg == "power":
+            if self._eng.running:
+                self.stop(); self.notice = "Motor detenido"
+            else:
+                c = self.cfg
+                r = self.start(c.get("api", "MME"), c.get("entrada"), c.get("salida"), c.get("escuchar"))
+                self.notice = "Motor en marcha" if r["ok"] else "No se pudo iniciar: " + r["error"]
+        elif arg == "random":
+            self.random_voice(); self.notice = f"Voz: {self.current}"
+        elif arg == "stop_sounds":
+            self._eng.stop_sounds()
+        elif arg in ("enabled", "muted", "monitor"):
+            cur = self._toggles()[arg]
+            self.toggle(arg, not cur)
+            labels = {"enabled": "Efecto", "muted": "Micrófono silenciado", "monitor": "Escucharme"}
+            self.notice = f"{labels[arg]}: {'sí' if not cur else 'no'}"
+
     def _hotkeys(self):
         if keyboard is None:
             return
-        def voice_i(i):
-            vs = self._voices()
-            if i < len(vs):
-                self._select(vs[i]["name"]); self.notice = f"Voz: {vs[i]['name']}"
-        def sound_i(i):
-            if i < len(getattr(self, "sound_files", [])):
-                self.play(self.sound_files[i])
-        def flip(attr, label):
-            setattr(self._eng.proc, attr, not getattr(self._eng.proc, attr))
-            self.notice = f"{label}: {'sí' if getattr(self._eng.proc, attr) else 'no'}"
         try:
-            for i in range(1, 10):
-                keyboard.add_hotkey(f"ctrl+shift+{i}", sound_i, args=(i - 1,))
-            keyboard.add_hotkey("ctrl+shift+0", self._eng.stop_sounds)
-            keyboard.add_hotkey("ctrl+alt+v", flip, args=("enabled", "Voz activada"))
-            keyboard.add_hotkey("ctrl+alt+m", flip, args=("muted", "Micrófono silenciado"))
-            keyboard.add_hotkey("ctrl+alt+r", lambda: (self.random_voice(), setattr(self, "notice", f"Voz: {self.current}")))
+            keyboard.unhook_all_hotkeys()
         except Exception:
             pass
+        for target, combo in self._binds().items():
+            try:
+                keyboard.add_hotkey(combo, self._run_bind, args=(target,))
+            except Exception:
+                pass
+
+    def hotkeys(self):
+        return dict(available=keyboard is not None, binds=self._binds(),
+                    actions=[dict(id=k, label=v) for k, v in self.ACTIONS.items()])
+
+    def capture_hotkey(self):
+        """Espera a que el usuario pulse una combinación. Esc cancela."""
+        if keyboard is None:
+            return None
+        try:
+            keyboard.unhook_all_hotkeys()
+        except Exception:
+            pass
+        try:
+            combo = keyboard.read_hotkey(suppress=False)
+        finally:
+            self._hotkeys()
+        return None if combo in ("esc", "escape") else combo
+
+    def set_hotkey(self, target, combo):
+        b = self._binds()
+        for k in [k for k, v in b.items() if v == combo]:
+            b.pop(k)  # una combinación solo puede tener una función
+        b[target] = combo
+        self._save_cfg(); self._hotkeys()
+        return b
+
+    def clear_hotkey(self, target):
+        self._binds().pop(target, None)
+        self._save_cfg(); self._hotkeys()
+        return self._binds()
 
     def _save_cfg(self):
         save_json(CONFIG, self.cfg)

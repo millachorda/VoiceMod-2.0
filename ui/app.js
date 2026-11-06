@@ -1,7 +1,7 @@
 // VoiceMod 2.0 — lógica de la interfaz
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
-let api, S = { voices: [], sounds: [], favs: [], current: "Normal", params: {}, cat: "Todas", running: false };
+let api, S = { voices: [], sounds: [], favs: [], current: "Normal", params: {}, cat: "Todas", running: false, binds: {}, actions: [] };
 
 const MODULES = [
   { id: "tono", title: "Tono", img: "img/modulos/tono.jpg", keys: [["pitch", "Semitonos", -12, 12, 0.5, (v) => (v > 0 ? "+" : "") + v]] },
@@ -69,6 +69,8 @@ function renderVoices() {
     <div class="card ${v.name === S.current ? "selected" : ""}" data-voice="${v.name}">
       <div class="art" style="${artStyle(v)}">${v.img ? "" : v.emoji}</div>
       <button class="fav ${S.favs.includes(v.name) ? "on" : ""}" data-fav="${v.name}" title="Favorita"><svg><use href="#i-star"/></svg></button>
+      <button class="hkbtn" data-hk="voice:${v.name}" title="Asignar atajo">⌨</button>
+      ${S.binds["voice:" + v.name] ? `<span class="key user">${fmtCombo(S.binds["voice:" + v.name])}</span>` : ""}
       <div class="meta"><b>${v.name}</b><small>${v.desc}</small></div>
     </div>`).join("") : `<div class="empty">${S.cat === "Favoritas" ? "Marca voces con ★ para verlas aquí." : "No hay voces que coincidan."}</div>`;
   $("#nVoices").textContent = S.voices.length;
@@ -122,11 +124,55 @@ function renderSounds() {
     const [a, b] = PAD_COLORS[i % PAD_COLORS.length];
     const bg = s.img ? `url('${s.img}') center/cover` : `linear-gradient(145deg,${a},${b})`;
     return `<button class="pad" data-sound="${s.file}" style="--pad:${bg}">
-      ${i < 9 ? `<span class="key">⇧${i + 1}</span>` : ""}
+      ${S.binds["sound:" + s.file] ? `<span class="key user">${fmtCombo(S.binds["sound:" + s.file])}</span>` : ""}
+      <span class="hkbtn" data-hk="sound:${s.file}" title="Asignar atajo">⌨</span>
       <span class="emo">${s.img ? "" : s.emoji}</span><b>${s.name}</b>
       <span class="del" data-del="${s.file}" title="Eliminar"><svg><use href="#i-trash"/></svg></span></button>`;
   }).join("") + `<button class="pad add" id="padAdd"><svg style="width:28px;height:28px"><use href="#i-plus"/></svg><b>Añadir sonido</b></button>`;
   $("#nSounds").textContent = S.sounds.length;
+}
+
+// ---------- atajos (los pone el usuario) ----------
+function fmtCombo(c) {
+  return c.split("+").map((k) => k.trim().replace(/^\w/, (m) => m.toUpperCase())).join(" + ");
+}
+function kbdCombo(c) {
+  return c.split("+").map((k) => `<kbd>${k.trim().replace(/^\w/, (m) => m.toUpperCase())}</kbd>`).join("");
+}
+function hkLabel(target) {
+  const [kind, ...rest] = target.split(":"); const arg = rest.join(":");
+  if (kind === "voice") return "🎭 Voz: " + arg;
+  if (kind === "sound") return "🔊 Sonido: " + arg.replace(/\.wav$/i, "");
+  return (S.actions.find((a) => a.id === arg) || { label: arg }).label;
+}
+function hkRow(target) {
+  const c = S.binds[target];
+  return `<div class="hk-row"><span class="lbl">${hkLabel(target)}</span>
+    ${c ? `<span>${kbdCombo(c)}</span>` : `<span class="none">Sin asignar</span>`}
+    <button class="btn" data-hkset="${target}">${c ? "Cambiar" : "Asignar"}</button>
+    ${c ? `<button class="btn danger" data-hkclear="${target}">Quitar</button>` : ""}</div>`;
+}
+function renderHotkeys() {
+  if (!S.hkAvailable) {
+    $("#hkActions").innerHTML = `<div class="alert">Falta la librería «keyboard»: ejecuta <b>pip install keyboard</b> para usar atajos.</div>`;
+    return;
+  }
+  $("#hkActions").innerHTML = S.actions.map((a) => hkRow("action:" + a.id)).join("");
+  const others = Object.keys(S.binds).filter((k) => !k.startsWith("action:"));
+  $("#hkOthers").innerHTML = others.length ? others.map(hkRow).join("") : `<div class="hk-empty">Ninguno. Pulsa ⌨ en una voz o en un sonido para asignarle una tecla.</div>`;
+}
+function refreshBinds(b) {
+  S.binds = b; renderHotkeys(); renderVoices(); renderSounds();
+}
+async function assignHotkey(target) {
+  if (!S.hkAvailable) return toast("Instala la librería keyboard para usar atajos", true);
+  $("#hkFor").textContent = "Para: " + hkLabel(target);
+  $("#hkModal").classList.add("show");
+  let combo = null;
+  try { combo = await api.capture_hotkey(); } finally { $("#hkModal").classList.remove("show"); }
+  if (!combo) return toast("Cancelado");
+  refreshBinds(await api.set_hotkey(target, combo));
+  toast("Atajo " + fmtCombo(combo) + " → " + hkLabel(target));
 }
 
 // ---------- dispositivos ----------
@@ -190,6 +236,8 @@ function bind() {
   $("#cats").onclick = (e) => { const b = e.target.closest(".chip"); if (b) { S.cat = b.dataset.cat; renderCats(); renderVoices(); } };
   $("#search").oninput = renderVoices;
   $("#voiceGrid").onclick = async (e) => {
+    const h = e.target.closest("[data-hk]");
+    if (h) { e.stopPropagation(); return assignHotkey(h.dataset.hk); }
     const f = e.target.closest("[data-fav]");
     if (f) {
       const n = f.dataset.fav;
@@ -232,6 +280,8 @@ function bind() {
   };
 
   $("#soundGrid").onclick = async (e) => {
+    const h = e.target.closest("[data-hk]");
+    if (h) { e.stopPropagation(); return assignHotkey(h.dataset.hk); }
     const d = e.target.closest("[data-del]");
     if (d) { e.stopPropagation(); S.sounds = await api.delete_sound(d.dataset.del); renderSounds(); return; }
     if (e.target.closest("#padAdd")) return $("#sbAdd").click();
@@ -251,6 +301,11 @@ function bind() {
   $$(".link[data-url]").forEach((l) => (l.onclick = () => api.open_url(l.dataset.url)));
 
   $("#power").onclick = power;
+  $("#page-settings").addEventListener("click", async (e) => {
+    const set = e.target.closest("[data-hkset]"), clr = e.target.closest("[data-hkclear]");
+    if (set) assignHotkey(set.dataset.hkset);
+    if (clr) { refreshBinds(await api.clear_hotkey(clr.dataset.hkclear)); toast("Atajo quitado"); }
+  });
   $("#tEnabled").onclick = async () => setToggles((await api.toggle("enabled", !$("#tEnabled").classList.contains("on"))).toggles);
   $("#tMute").onclick = async () => setToggles((await api.toggle("muted", !$("#tMute").classList.contains("on"))).toggles);
   $("#tMonitor").onclick = async () => {
@@ -268,9 +323,12 @@ async function boot() {
   const d = await api.init();
   Object.assign(S, d);
   S.categories = d.categories;
+  S.binds = d.binds || {};
+  const hk = await api.hotkeys();
+  S.actions = hk.actions; S.hkAvailable = hk.available;
   fill($("#selApi"), d.apis.map((n) => ({ name: n })), d.api);
   renderDevices(d.devices);
-  renderCats(); renderVoices(); renderModules(); syncSliders(); renderSounds(); showCurrent();
+  renderCats(); renderVoices(); renderModules(); syncSliders(); renderSounds(); showCurrent(); renderHotkeys();
   setToggles(d.toggles);
   $("#sfxVol").value = d.sfx_volume; $("#sfxVolOut").textContent = pct(d.sfx_volume); paintRange($("#sfxVol"));
   bind();

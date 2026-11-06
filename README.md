@@ -14,7 +14,7 @@
 - **Visualizador de espectro** en directo y medidores de entrada y salida.
 - **Probar voz:** grábate 4 segundos y escucha el resultado con el efecto actual.
 - **Escucharme:** te oyes por los auriculares mientras hablas.
-- **Atajos globales** que funcionan dentro de juegos y de Discord.
+- **Atajos globales configurables** para acciones, voces y sonidos. Funcionan dentro de juegos y de Discord.
 - Baja latencia: audio a 48 kHz procesado en bloques de 5 ms, con un motor DSP propio escrito en NumPy.
 
 ## Instalación
@@ -28,14 +28,11 @@
 2. Pulsa **INICIAR**.
 3. En Discord, abre *Voz y vídeo*. Pon como entrada **CABLE Output** y desactiva la supresión de ruido.
 
-## Atajos globales
-| Atajo | Acción |
-|---|---|
-| Ctrl+Alt+R | Voz aleatoria |
-| Ctrl+Alt+V | Activar o desactivar el efecto |
-| Ctrl+Alt+M | Silenciar el micrófono |
-| Ctrl+Shift+1…9 | Lanzar un sonido |
-| Ctrl+Shift+0 | Parar todos los sonidos |
+## Atajos de teclado
+No viene ninguno puesto: **los asignas tú**.
+- En **Ajustes y audio → Atajos de teclado globales** pulsa *Asignar* y luego la combinación que quieras. Puedes asignar: iniciar o detener el motor, activar o quitar el efecto, silenciar el micro, escucharme, voz aleatoria y parar sonidos.
+- Para asignar una tecla a una **voz** o a un **sonido** concretos, pulsa el botón ⌨ de su tarjeta.
+- Los atajos funcionan aunque estés dentro de un juego o en Discord. *Esc* cancela la asignación.
 
 ## Estructura del proyecto
 | Archivo | Contenido |

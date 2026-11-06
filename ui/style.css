@@ -284,3 +284,18 @@ kbd { display: inline-block; font-family: inherit; font-size: 11px; font-weight:
 .pro-img { height: 70px; margin: -14px -14px 12px; background: url('img/voces/18.jpg') center/cover; border-radius: var(--radius) var(--radius) 0 0; }
 .pro-card { overflow: hidden; }
 .module h4 .ico { width: 34px; height: 34px; border-radius: 10px; }
+
+/* atajos configurables */
+.hk-list { display: flex; flex-direction: column; gap: 8px; }
+.hk-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border); font-size: 13px; }
+.hk-row .lbl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hk-row .none { color: var(--faint); font-size: 12px; }
+.hk-row .btn { padding: 6px 10px; font-size: 12px; }
+.hk-sub { font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--faint); margin: 18px 0 8px; }
+.hk-empty { color: var(--faint); font-size: 12px; padding: 4px 2px; }
+.hk-anim { font-size: 46px; margin-bottom: 10px; animation: float 1.4s ease-in-out infinite; }
+.card .hkbtn, .pad .hkbtn { position: absolute; width: 30px; height: 30px; border-radius: 50%; background: rgba(0, 0, 0, .45); backdrop-filter: blur(6px); display: grid; place-items: center; opacity: 0; transition: .15s; font-size: 14px; z-index: 2; }
+.card .hkbtn { top: 6px; right: 42px; }
+.pad .hkbtn { bottom: 10px; right: 42px; width: 26px; height: 26px; border-radius: 8px; font-size: 12px; }
+.card:hover .hkbtn, .pad:hover .hkbtn { opacity: 1; }
+.key.user { background: rgba(139, 92, 246, .75); color: white; text-transform: uppercase; }
