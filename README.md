@@ -1,47 +1,49 @@
 ﻿<p align="center"><img src="ui/img/logo.png" width="120" alt="VoiceMod 2.0"></p>
 
 <h1 align="center">VoiceMod 2.0</h1>
-<p align="center">A free, open-source voice changer for Windows that runs in real time. Every feature is unlocked.</p>
+<p align="center">Cambiador de voz en tiempo real para Windows, gratis y de código abierto. Todo desbloqueado.</p>
+
+<p align="center"><img src="docs/soundboard.png" width="49%"> <img src="docs/laboratorio.png" width="49%"></p>
 
 ---
 
-## Features
-- **46 voices** in 7 categories: Human, Fun, Creatures, Horror, Machines and Environments, plus your own voices.
-- **Voice lab** with 18 parameters you can change live: pitch, robot, whisper, distortion, bitcrusher, EQ, tremolo, echo, reverb, noise gate and volume. You can save your own voices.
-- **Soundboard** with no limit on sounds: add your own WAV files and send them straight to your microphone.
-- **Live spectrum view** and input/output level meters.
-- **Test voice:** record yourself for 4 seconds and hear the result with the current effect.
-- **Listen to yourself** through your headphones while you talk.
-- **Global shortcuts** that work inside games and Discord.
-- Low latency: 48 kHz audio processed in 5 ms blocks, with a custom DSP engine written in NumPy.
+## Funciones
+- **46 voces** en 7 categorías: Humanas, Divertidas, Criaturas, Terror, Máquinas, Ambientes y tus propias voces.
+- **Laboratorio de voz** con 18 parámetros que cambian en directo: tono, robot, susurro, distorsión, bitcrusher, ecualizador, trémolo, eco, reverb, puerta de ruido y volumen. Puedes guardar tus propias voces.
+- **Soundboard ilimitado:** añade tus WAV y envíalos directamente a tu micrófono.
+- **Visualizador de espectro** en directo y medidores de entrada y salida.
+- **Probar voz:** grábate 4 segundos y escucha el resultado con el efecto actual.
+- **Escucharme:** te oyes por los auriculares mientras hablas.
+- **Atajos globales** que funcionan dentro de juegos y de Discord.
+- Baja latencia: audio a 48 kHz procesado en bloques de 5 ms, con un motor DSP propio escrito en NumPy.
 
-## Installation
-1. Install [Python 3.11+](https://www.python.org/downloads/).
+## Instalación
+1. Instala [Python 3.11 o superior](https://www.python.org/downloads/).
 2. `pip install -r requirements.txt`
-3. Install a virtual audio cable, for example [VB-Cable](https://vb-audio.com/Cable/), which is free.
-4. Double-click **`Iniciar VoiceMod 2.0.bat`**, or run `python app.py`.
+3. Instala un cable de audio virtual, por ejemplo [VB-Cable](https://vb-audio.com/Cable/), que es gratis.
+4. Haz doble clic en **`Iniciar VoiceMod 2.0.bat`**, o ejecuta `python app.py`.
 
-## Using it in Discord, OBS or games
-1. In the app, go to **Ajustes y audio** (Settings and audio). Pick your microphone, and pick the cable as the output.
-2. Click **INICIAR** (Start).
-3. In Discord, open *Voice & Video*. Set the input to **CABLE Output** and turn off noise suppression.
+## Usarlo en Discord, OBS o juegos
+1. En la app, ve a **Ajustes y audio**. Elige tu micrófono y pon el cable como salida.
+2. Pulsa **INICIAR**.
+3. En Discord, abre *Voz y vídeo*. Pon como entrada **CABLE Output** y desactiva la supresión de ruido.
 
-## Global shortcuts
-| Shortcut | Action |
+## Atajos globales
+| Atajo | Acción |
 |---|---|
-| Ctrl+Alt+R | Random voice |
-| Ctrl+Alt+V | Turn the effect on or off |
-| Ctrl+Alt+M | Mute the microphone |
-| Ctrl+Shift+1…9 | Play a sound |
-| Ctrl+Shift+0 | Stop all sounds |
+| Ctrl+Alt+R | Voz aleatoria |
+| Ctrl+Alt+V | Activar o desactivar el efecto |
+| Ctrl+Alt+M | Silenciar el micrófono |
+| Ctrl+Shift+1…9 | Lanzar un sonido |
+| Ctrl+Shift+0 | Parar todos los sonidos |
 
-## Project structure
-| File | Contents |
+## Estructura del proyecto
+| Archivo | Contenido |
 |---|---|
-| `app.py` | Window (pywebview) and the bridge to the interface |
-| `engine.py` | Real-time audio engine and effects |
-| `presets.py` | Voice definitions |
-| `make_art.py` | Generates the icon and the images |
-| `ui/` | Interface (HTML, CSS, JS) |
+| `app.py` | Ventana (pywebview) y puente con la interfaz |
+| `engine.py` | Motor de audio en tiempo real y efectos |
+| `presets.py` | Definición de las voces |
+| `make_art.py` | Genera el icono y las imágenes |
+| `ui/` | Interfaz (HTML, CSS y JS) |
 
-*Independent project. It is not affiliated with Voicemod S.L.*
+*Proyecto independiente. No está afiliado a Voicemod S.L.*
