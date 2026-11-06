@@ -1,0 +1,7 @@
+﻿__pycache__/
+*.pyc
+config.json
+voces_personalizadas.json
+ui/img/personal/
+*.lnk
+ui/img/sonidos/
