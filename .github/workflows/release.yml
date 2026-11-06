@@ -1,0 +1,52 @@
+# Compila VoiceMod 2.0 y publica el instalador en GitHub Releases al crear una etiqueta vX.Y.Z
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Versión desde la etiqueta
+        id: ver
+        shell: pwsh
+        run: |
+          $v = "${{ github.ref_name }}".TrimStart('v')
+          if ($v -notmatch '^\d+\.\d+\.\d+$') { $v = "0.0.0" }
+          "version=$v" >> $env:GITHUB_OUTPUT
+          # la app lee su versión de version.py
+          (Get-Content version.py) -replace 'VERSION = ".*"', "VERSION = `"$v`"" | Set-Content version.py -Encoding utf8
+
+      - name: Dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+
+      - name: Empaquetar la app
+        run: pyinstaller --noconfirm --clean --distpath dist --workpath build build_tools/voicemod.spec
+
+      - name: Crear el instalador
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /Q /DAppVersion=${{ steps.ver.outputs.version }} build_tools\installer.iss
+
+      - name: Subir a la release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: VoiceMod 2.0 ${{ github.ref_name }}
+          files: dist/VoiceMod-2.0-Setup.exe
+          generate_release_notes: true

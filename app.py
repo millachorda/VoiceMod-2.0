@@ -4,7 +4,11 @@ import json
 import os
 import random
 import shutil
+import subprocess
+import sys
+import tempfile
 import threading
+import urllib.request
 
 import numpy as np
 import sounddevice as sd
@@ -12,6 +16,7 @@ import webview
 
 from engine import AudioEngine, DEFAULT_PARAMS, load_wav, SR
 from presets import PRESETS, META, CATEGORIES
+from version import VERSION, REPO, SETUP_ASSET
 
 try:
     import keyboard  # atajos globales
@@ -19,10 +24,14 @@ except Exception:
     keyboard = None
 
 APP_NAME = "VoiceMod 2.0"
-HERE = os.path.dirname(os.path.abspath(__file__))
-SOUNDS_DIR = os.path.join(HERE, "sonidos")
-CONFIG = os.path.join(HERE, "config.json")
-CUSTOM = os.path.join(HERE, "voces_personalizadas.json")
+FROZEN = getattr(sys, "frozen", False)
+# HERE: archivos de la app (interfaz, icono). DATA: datos del usuario (en %APPDATA% si está instalada).
+HERE = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+DATA = os.path.join(os.environ.get("APPDATA", HERE), APP_NAME) if FROZEN else HERE
+os.makedirs(DATA, exist_ok=True)
+SOUNDS_DIR = os.path.join(DATA, "sonidos")
+CONFIG = os.path.join(DATA, "config.json")
+CUSTOM = os.path.join(DATA, "voces_personalizadas.json")
 ICON = os.path.join(HERE, "icono.ico")
 
 SOUND_EMOJI = {"bocina": "📯", "tada": "🎉", "fallo": "👎", "redoble": "🥁", "pitido": "🔔", "laser": "✨",
@@ -48,6 +57,11 @@ def make_default_sounds():
     os.makedirs(SOUNDS_DIR, exist_ok=True)
     if os.listdir(SOUNDS_DIR):
         return
+    bundled = os.path.join(HERE, "sonidos")
+    if FROZEN and os.path.isdir(bundled):
+        for f in os.listdir(bundled):
+            shutil.copy(os.path.join(bundled, f), SOUNDS_DIR)
+        return
     t = lambda d: np.arange(int(SR * d)) / SR
 
     def save(name, a):
@@ -71,6 +85,13 @@ def make_default_sounds():
     save("pitido.wav", np.sin(2 * np.pi * 1000 * t(0.25)))
     x = t(1.0)
     save("laser.wav", np.sin(2 * np.pi * np.cumsum(2000 * np.exp(-x * 4) + 200) / SR) * np.exp(-x * 3))
+
+
+def parse_ver(v):
+    try:
+        return tuple(int(x) for x in v.split("."))
+    except Exception:
+        return (0,)
 
 
 def art_name(name):
@@ -332,6 +353,62 @@ class Api:
             os.startfile(url)
         return True
 
+    # ---------- actualizaciones (Releases de GitHub) ----------
+    def _http(self, url, timeout=8):
+        req = urllib.request.Request(url, headers={"User-Agent": f"VoiceMod2/{VERSION}", "Accept": "application/vnd.github+json"})
+        return urllib.request.urlopen(req, timeout=timeout)
+
+    def check_update(self):
+        """Mira la última release del repositorio público."""
+        try:
+            with self._http(f"https://api.github.com/repos/{REPO}/releases/latest") as r:
+                rel = json.load(r)
+            tag = rel.get("tag_name", "")
+            latest = tag.lstrip("vV")
+            asset = next((a["browser_download_url"] for a in rel.get("assets", []) if a["name"] == SETUP_ASSET), None)
+            newer = parse_ver(latest) > parse_ver(VERSION)
+            self.update_info = dict(version=latest, url=asset, notes=(rel.get("body") or "")[:1500]) if newer and asset else None
+            return dict(ok=True, current=VERSION, latest=latest, available=bool(self.update_info),
+                        notes=self.update_info["notes"] if self.update_info else "")
+        except Exception as e:
+            return dict(ok=False, current=VERSION, error=str(e))
+
+    def install_update(self):
+        info = getattr(self, "update_info", None)
+        if not info:
+            return dict(ok=False, error="No hay ninguna actualización pendiente")
+        if not FROZEN:
+            return dict(ok=False, error="Estás ejecutando el código fuente: usa git pull para actualizar")
+
+        def run():
+            try:
+                dest = os.path.join(tempfile.gettempdir(), SETUP_ASSET)
+                self.update_progress = 0.0
+                with self._http(info["url"], timeout=30) as r, open(dest + ".part", "wb") as f:
+                    total = int(r.headers.get("Content-Length") or 0)
+                    done = 0
+                    while chunk := r.read(1 << 16):
+                        f.write(chunk); done += len(chunk)
+                        if total:
+                            self.update_progress = done / total
+                with open(dest + ".part", "rb") as f:
+                    if f.read(2) != b"MZ":
+                        raise ValueError("La descarga no es un instalador válido")
+                os.replace(dest + ".part", dest)
+                self.update_progress = 1.0
+                # El instalador cierra esta app, se instala encima y la vuelve a abrir
+                subprocess.Popen([dest, "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS"])
+                self.shutdown()
+                os._exit(0)
+            except Exception as e:
+                self.update_progress = None
+                self.notice = "Error al actualizar: " + str(e)
+        threading.Thread(target=run, daemon=True).start()
+        return dict(ok=True)
+
+    def app_info(self):
+        return dict(version=VERSION, repo=f"https://github.com/{REPO}", data=DATA, installed=FROZEN)
+
     # ---------- estado (lo consulta la interfaz ~25 veces/s) ----------
     def state(self):
         lv = lambda x: max(0.0, min(1.0, (20 * np.log10(x + 1e-9) + 60) / 60))
@@ -339,7 +416,8 @@ class Api:
         n, self.notice = self.notice, None
         return dict(running=run, inp=lv(self._eng.in_level) if run else 0, out=lv(self._eng.out_level) if run else 0,
                     spec=self._eng.spectrum(32) if run else [0] * 32, current=self.current,
-                    toggles=self._toggles(), test=self.test_state, playing=len(self._eng.sounds), notice=n)
+                    toggles=self._toggles(), test=self.test_state, playing=len(self._eng.sounds), notice=n,
+                    update=getattr(self, "update_progress", None))
 
     # ---------- atajos ----------
     # Sin atajos por defecto: el usuario asigna los suyos. Se guardan en config.json -> "atajos".

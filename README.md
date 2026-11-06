@@ -17,7 +17,14 @@
 - **Atajos globales configurables** para acciones, voces y sonidos. Funcionan dentro de juegos y de Discord.
 - Baja latencia: audio a 48 kHz procesado en bloques de 5 ms, con un motor DSP propio escrito en NumPy.
 
-## Instalación
+## Descarga
+**[⬇ Descargar VoiceMod-2.0-Setup.exe](https://github.com/millachorda/VoiceMod-2.0/releases/latest/download/VoiceMod-2.0-Setup.exe)** para Windows 10 y 11. No necesitas Python ni permisos de administrador.
+
+- Se instala en tu usuario y aparece en *Aplicaciones instaladas*, desde donde puedes desinstalarlo.
+- **Se actualiza solo:** al abrirse mira si hay una versión nueva en las Releases de GitHub y te ofrece instalarla con un clic. También puedes buscarla en *Ajustes → Acerca de*.
+- Tus voces, tus sonidos y tu configuración se guardan en `%APPDATA%\VoiceMod 2.0`, así que las actualizaciones no los borran.
+
+## Ejecutar desde el código fuente
 1. Instala [Python 3.11 o superior](https://www.python.org/downloads/).
 2. `pip install -r requirements.txt`
 3. Instala un cable de audio virtual, por ejemplo [VB-Cable](https://vb-audio.com/Cable/), que es gratis.
@@ -42,5 +49,10 @@ No viene ninguno puesto: **los asignas tú**.
 | `presets.py` | Definición de las voces |
 | `make_art.py` | Genera el icono y las imágenes |
 | `ui/` | Interfaz (HTML, CSS y JS) |
+| `version.py` | Versión y repositorio de las actualizaciones |
+| `build_tools/` | Empaquetado (PyInstaller) e instalador (Inno Setup) |
+
+## Publicar una versión nueva
+Crea una etiqueta `vX.Y.Z` y súbela (`git tag v2.0.1 && git push --tags`). GitHub Actions compila el instalador y lo sube a Releases. Las copias instaladas lo detectan solas.
 
 *Proyecto independiente. No está afiliado a Voicemod S.L.*

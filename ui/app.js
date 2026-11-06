@@ -175,6 +175,19 @@ async function assignHotkey(target) {
   toast("Atajo " + fmtCombo(combo) + " → " + hkLabel(target));
 }
 
+// ---------- actualizaciones ----------
+async function checkUpdates(manual) {
+  if (manual) $("#updStatus").textContent = "Buscando en GitHub…";
+  const r = await api.check_update();
+  if (!r.ok) { if (manual) $("#updStatus").textContent = "No se pudo conectar con GitHub: " + r.error; return; }
+  if (r.available) {
+    $("#ubTitle").textContent = `Nueva versión ${r.latest} disponible`;
+    $("#ubSub").textContent = `Tienes la ${r.current}. Se descarga desde GitHub y se instala sola.`;
+    $("#updateBar").classList.add("show");
+    $("#updStatus").textContent = `Hay una versión nueva: ${r.latest}`;
+  } else if (manual) $("#updStatus").textContent = `✔ Tienes la última versión (${r.current}).`;
+}
+
 // ---------- dispositivos ----------
 function fill(sel, items, value) {
   sel.innerHTML = items.map((d) => `<option ${d.name === value ? "selected" : ""}>${d.name}</option>`).join("");
@@ -226,7 +239,11 @@ async function poll() {
     if (st.current !== S.current) { S.current = st.current; const r = await api.voice(st.current); S.params = r.params; showCurrent(); syncSliders(); }
     $("#tTest").classList.toggle("rec", st.test === "grabando");
     $("#testLbl").textContent = st.test === "grabando" ? "Grabando…" : st.test === "reproduciendo" ? "Reproduciendo" : "Probar voz";
-    if (st.notice) toast(st.notice);
+    if (st.notice) toast(st.notice, st.notice.startsWith("Error"));
+    if (st.update != null) {
+      $("#ubProgBar").style.width = st.update * 100 + "%";
+      $("#ubSub").textContent = st.update >= 1 ? "Instalando… la app se volverá a abrir sola" : `Descargando… ${Math.round(st.update * 100)}%`;
+    }
   } finally { polling = false; }
 }
 
@@ -301,6 +318,15 @@ function bind() {
   $$(".link[data-url]").forEach((l) => (l.onclick = () => api.open_url(l.dataset.url)));
 
   $("#power").onclick = power;
+  $("#checkUpd").onclick = () => checkUpdates(true);
+  $("#openRepo").onclick = () => api.open_url(S.info.repo);
+  $("#ubLater").onclick = () => $("#updateBar").classList.remove("show");
+  $("#ubInstall").onclick = async () => {
+    const r = await api.install_update();
+    if (!r.ok) return toast(r.error, true);
+    $("#ubInstall").disabled = true; $("#ubLater").style.display = "none";
+    $("#updateBar").classList.add("busy"); $("#ubSub").textContent = "Descargando…";
+  };
   $("#page-settings").addEventListener("click", async (e) => {
     const set = e.target.closest("[data-hkset]"), clr = e.target.closest("[data-hkclear]");
     if (set) assignHotkey(set.dataset.hkset);
@@ -331,8 +357,12 @@ async function boot() {
   renderCats(); renderVoices(); renderModules(); syncSliders(); renderSounds(); showCurrent(); renderHotkeys();
   setToggles(d.toggles);
   $("#sfxVol").value = d.sfx_volume; $("#sfxVolOut").textContent = pct(d.sfx_volume); paintRange($("#sfxVol"));
+  S.info = await api.app_info();
+  $("#aboutVer").textContent = "Versión " + S.info.version;
+  $(".brand .tag").textContent = "v" + S.info.version + " · cambiador de voz";
   bind();
   setInterval(poll, 45);
+  setTimeout(() => checkUpdates(false), 1500);
   setTimeout(() => $("#splash").classList.add("hide"), 350);
 }
 

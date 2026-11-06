@@ -5,3 +5,5 @@ voces_personalizadas.json
 ui/img/personal/
 *.lnk
 ui/img/sonidos/
+build/
+dist/

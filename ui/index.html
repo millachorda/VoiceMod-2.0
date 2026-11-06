@@ -65,6 +65,14 @@
       <label class="search" id="searchBox"><svg><use href="#i-search"/></svg><input id="search" placeholder="Buscar voces…"></label>
     </header>
 
+    <div class="update-bar" id="updateBar">
+      <span class="ub-ico">🚀</span>
+      <div class="ub-txt"><b id="ubTitle">Nueva versión disponible</b><small id="ubSub">Se descarga desde GitHub y se instala sola</small></div>
+      <div class="ub-prog" id="ubProg"><i id="ubProgBar"></i></div>
+      <button class="btn" id="ubLater">Más tarde</button>
+      <button class="btn primary" id="ubInstall">Actualizar ahora</button>
+    </div>
+
     <!-- VOCES -->
     <section class="page active" id="page-voices">
       <div class="hero" id="hero">
@@ -151,7 +159,12 @@
           <div class="banner" style="background-image:url('img/ajustes/info.jpg')"></div>
           <h4>Acerca de</h4>
           <p>VoiceMod 2.0 · motor DSP propio a 48 kHz con bloques de 5 ms. Tus voces y tus sonidos se guardan en la carpeta de la aplicación.</p>
-          <div class="row" style="gap:14px"><img src="img/logo.png" style="width:56px;border-radius:14px" alt=""><div><b>Versión 2.0</b><div style="color:var(--muted);font-size:12px">46 voces · 18 parámetros · soundboard ilimitado</div></div></div>
+          <div class="row" style="gap:14px"><img src="img/logo.png" style="width:56px;border-radius:14px" alt=""><div><b id="aboutVer">Versión 2.0.0</b><div style="color:var(--muted);font-size:12px">46 voces · 18 parámetros · soundboard ilimitado</div></div></div>
+          <div class="row" style="margin-top:16px;gap:10px">
+            <button class="btn primary" id="checkUpd">Buscar actualizaciones</button>
+            <button class="btn" id="openRepo">Ver en GitHub</button>
+          </div>
+          <div id="updStatus" style="color:var(--muted);font-size:12px;margin-top:10px"></div>
         </div>
       </div>
     </section>
